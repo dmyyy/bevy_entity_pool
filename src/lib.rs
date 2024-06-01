@@ -47,11 +47,11 @@ impl EntityPool {
         }
     }
 
-    /// Returns a handle to an entity
+    /// Returns an entity from the pool.
     ///
     /// # Panics
     /// Panics on pool exhaustion
-    pub fn get_handle(&mut self) -> &EntityHandle {
+    pub fn get(&mut self) -> Entity {
         if self.free_cursor > self.entities.len() - 1 {
             panic!("pool exhaustion - all entities in use");
         }
@@ -66,11 +66,8 @@ impl EntityPool {
         self.handles.last().unwrap()
     }
 
-    /// Invalidates and reclaims all in use handles.  
-    ///
-    /// # Panics
-    /// Panics if an entity handle is dereferenced after a
-    pub fn free(&mut self, world: &mut World) {
+    /// Invalidates and reclaims all in use entities.  
+    pub fn free_entities(&mut self, world: &mut World) {
         // make sure world we're freeing from is the same world we initialized with
         debug_assert_eq!(self.world_id, world.id());
 
@@ -82,42 +79,5 @@ impl EntityPool {
         for handle in &mut self.handles {
             handle.dropped = true;
         }
-    }
-}
-
-/// Handle that points to an entity. Smart pointer that enforces memory safety of underlying entity, namely
-/// - handle should not be droppe
-///
-/// # Panics   
-/// Panics if handle goes out of scope without being explicitly freed.
-pub struct EntityHandle {
-    entity: Entity,
-    dropped: bool,
-}
-
-impl EntityHandle {
-    pub fn entity_mut<'w>(&'w self, world: &'w mut World) -> EntityWorldMut {
-        world.entity_mut(self.entity)
-    }
-}
-
-impl Drop for EntityHandle {
-    fn drop(&mut self) {
-        if !self.dropped {
-            panic!(
-                "entity handle went out of scope without being explicitly dropped - memory leak"
-            );
-        }
-    }
-}
-
-impl Deref for EntityHandle {
-    type Target = Entity;
-
-    fn deref(&self) -> &Self::Target {
-        if self.dropped {
-            panic!("dereferenced entity handle even though handle has already been dropped - use after free");
-        }
-        &self.entity
     }
 }
